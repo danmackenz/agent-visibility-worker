@@ -37,7 +37,7 @@
 		"SITE_DESCRIPTION": "A thoughtful creative practice offering photography, digital support, and AI automation for founder-led brands and individuals.",
 		"AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 		"ENRICHMENT_CACHE_TTL": "3600",
-		"CONTENT_SIGNAL": "ai-input=yes, search=yes, ai-train=yes",
-		"ENABLE_WEB_BOT_AUTH": "true"
+		"CONTENT_SIGNAL": "ai-input=yes, search=yes, ai-train=no",
+		"ENABLE_WEB_BOT_AUTH": "false"
 	}
 }

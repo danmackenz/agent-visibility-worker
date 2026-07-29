@@ -299,4 +299,14 @@ app.all("/api/identity", async (c) => {
 	return c.json(result);
 });
 
-export default app;
+// Explicit module-worker wrapper: export an object with a fetch handler that
+// delegates to the Hono app. This makes the Cloudflare module-worker entry
+//point obvious and avoids ambiguity about the default export.
+export default {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+		// Hono's app.fetch may not have an exact TypeScript signature here; cast
+		// to any to avoid type mismatch while preserving runtime behavior.
+		return (app as any).fetch(request, env as any, ctx as any);
+	},
+};
+
