@@ -71,6 +71,66 @@ const API_CATALOG_HEADERS = {
 	"X-Content-Type-Options": "nosniff",
 };
 
+const AUTH_MD_BODY = `# auth.md
+
+## Authentication status
+
+The public API Catalog and currently advertised discovery resources do not
+require login.
+
+No automated agent-registration endpoint is currently available.
+
+Agents must not attempt to create accounts, obtain credentials, or call
+undocumented authentication endpoints.
+
+## Human account access
+
+Human account pages are available at:
+
+- Sign in: https://accounts.danmackenzie.co.uk/sign-in
+- Sign up: https://accounts.danmackenzie.co.uk/sign-up
+
+These are human-facing Clerk pages. They are not currently an API token
+endpoint, OAuth authorization server, or automated agent-registration flow.
+
+## API discovery
+
+The public API Catalog is available at:
+
+https://www.danmackenzie.co.uk/.well-known/api-catalog
+
+The advertised API description is available at:
+
+https://api.danmackenzie.co.uk/openapi.json
+
+## Current API access
+
+The currently advertised API discovery resources are public.
+
+There is currently no documented bot login endpoint, bearer-token issuance
+endpoint, API-key registration endpoint, OAuth authorization server, or
+automated agent credential-provisioning flow.
+
+Do not send credentials or Authorization headers unless a future version of
+this document explicitly documents how they should be obtained and used.
+
+## Future authentication changes
+
+Authentication instructions will be updated here when the Client Portal and
+protected API routes are deployed.
+
+Future documentation must describe only real, deployed authentication flows,
+including the protected resource, credential type, token endpoint or
+provisioning process, scopes or permissions, and revocation procedure where
+applicable.
+`;
+
+const AUTH_MD_HEADERS = {
+	"Content-Type": "text/markdown; charset=utf-8",
+	"Cache-Control": "public, max-age=3600",
+	"X-Content-Type-Options": "nosniff",
+};
+
 app.onError((err, c) => {
 	console.error(`[Error] ${c.req.method} ${c.req.path}: ${err.message}`);
 	// Match the response type to the surface: text surfaces shouldn't get a
@@ -118,6 +178,17 @@ app.on("HEAD", "/.well-known/api-catalog", () => {
 	return new Response(null, {
 		status: 200,
 		headers: API_CATALOG_HEADERS,
+	});
+});
+
+app.get("/auth.md", (c) => {
+	return c.body(AUTH_MD_BODY, 200, AUTH_MD_HEADERS);
+});
+
+app.on("HEAD", "/auth.md", () => {
+	return new Response(null, {
+		status: 200,
+		headers: AUTH_MD_HEADERS,
 	});
 });
 

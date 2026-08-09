@@ -40,6 +40,47 @@ beforeAll(async () => {
 });
 
 describe("Agent Visibility template", () => {
+	it("serves the auth.md discovery document", async () => {
+		const res = await SELF.fetch(`${BASE}/auth.md`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toContain(
+			"text/markdown; charset=utf-8",
+		);
+		expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+		const text = await res.text();
+		expect(text.trim().startsWith("# auth.md")).toBe(true);
+		expect(text).toContain("https://accounts.danmackenzie.co.uk/sign-in");
+		expect(text).toContain("https://accounts.danmackenzie.co.uk/sign-up");
+		expect(text).toContain("https://www.danmackenzie.co.uk/.well-known/api-catalog");
+		expect(text).toContain("https://api.danmackenzie.co.uk/openapi.json");
+		expect(text).not.toContain("/oauth2/");
+		expect(text).not.toContain("/token");
+		expect(text).not.toContain("/api-key");
+		expect(text).not.toContain("client_credentials");
+		expect(text).not.toContain("/login");
+	});
+
+	it("serves the auth.md discovery document for query-string requests", async () => {
+		const res = await SELF.fetch(`${BASE}/auth.md?verify=test`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toContain(
+			"text/markdown; charset=utf-8",
+		);
+		const text = await res.text();
+		expect(text.trim().startsWith("# auth.md")).toBe(true);
+	});
+
+	it("serves HEAD /auth.md with the same public text/markdown response shape", async () => {
+		const res = await SELF.fetch(`${BASE}/auth.md`, { method: "HEAD" });
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toContain(
+			"text/markdown; charset=utf-8",
+		);
+		expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+		const body = await res.text();
+		expect(body).toBe("");
+	});
+
 	it("serves the RFC 9727 API Catalog at /.well-known/api-catalog", async () => {
 		const res = await SELF.fetch(`${BASE}/.well-known/api-catalog`);
 		expect(res.status).toBe(200);
