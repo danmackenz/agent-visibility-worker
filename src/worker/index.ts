@@ -44,6 +44,33 @@ import {
 
 const app = new Hono<{ Bindings: Env }>();
 
+const API_CATALOG_BODY = JSON.stringify({
+	linkset: [
+		{
+			anchor: "https://api.danmackenzie.co.uk/",
+			"service-desc": [
+				{
+					href: "https://api.danmackenzie.co.uk/openapi.json",
+					type: "application/json",
+				},
+			],
+			"service-doc": [
+				{
+					href: "https://api.danmackenzie.co.uk/",
+					type: "text/html",
+				},
+			],
+		},
+	],
+});
+
+const API_CATALOG_HEADERS = {
+	"Content-Type":
+		'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+	"Cache-Control": "public, max-age=3600",
+	"X-Content-Type-Options": "nosniff",
+};
+
 app.onError((err, c) => {
 	console.error(`[Error] ${c.req.method} ${c.req.path}: ${err.message}`);
 	// Match the response type to the surface: text surfaces shouldn't get a
@@ -82,6 +109,17 @@ function contentSignal(c: { env: Env }): Record<string, string> {
 			c.env.CONTENT_SIGNAL || "ai-input=yes, search=yes, ai-train=no",
 	};
 }
+
+app.get("/.well-known/api-catalog", (c) => {
+	return c.body(API_CATALOG_BODY, 200, API_CATALOG_HEADERS);
+});
+
+app.on("HEAD", "/.well-known/api-catalog", () => {
+	return new Response(null, {
+		status: 200,
+		headers: API_CATALOG_HEADERS,
+	});
+});
 
 // CORS so agents can fetch the machine-readable surfaces from anywhere.
 app.use("/llms.txt", cors());

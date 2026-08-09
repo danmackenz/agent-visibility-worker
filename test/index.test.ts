@@ -40,6 +40,45 @@ beforeAll(async () => {
 });
 
 describe("Agent Visibility template", () => {
+	it("serves the RFC 9727 API Catalog at /.well-known/api-catalog", async () => {
+		const res = await SELF.fetch(`${BASE}/.well-known/api-catalog`);
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toContain(
+			"application/linkset+json",
+		);
+		expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+		expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		const catalog = (await res.json()) as {
+			linkset: Array<{
+				anchor: string;
+				"service-desc": Array<{ href: string; type: string }>;
+				"service-doc": Array<{ href: string; type: string }>;
+			}>;
+		};
+		expect(catalog.linkset).toHaveLength(1);
+		expect(catalog.linkset[0].anchor).toBe("https://api.danmackenzie.co.uk/");
+		expect(catalog.linkset[0]["service-desc"][0].href).toBe(
+			"https://api.danmackenzie.co.uk/openapi.json",
+		);
+		expect(catalog.linkset[0]["service-desc"][0].type).toBe(
+			"application/json",
+		);
+	});
+
+	it("serves HEAD /.well-known/api-catalog with the same headers and no body", async () => {
+		const res = await SELF.fetch(`${BASE}/.well-known/api-catalog`, {
+			method: "HEAD",
+		});
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toContain(
+			"application/linkset+json",
+		);
+		expect(res.headers.get("cache-control")).toBe("public, max-age=3600");
+		expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		const body = await res.text();
+		expect(body).toBe("");
+	});
+
 	it("serves /llms.txt as plain text with a Content-Signal header", async () => {
 		const res = await SELF.fetch(`${BASE}/llms.txt`);
 		expect(res.status).toBe(200);
