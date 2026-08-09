@@ -10,6 +10,8 @@
  *   GET /:slug.jsonld                      — per-page schema.org JSON-LD
  *   GET /jsonld                            — site-level schema.org JSON-LD
  *   GET /robots.txt                        — explicit AI-bot directives
+ *   GET /auth.md                           — authentication discovery (Markdown)
+ *   GET /auth.txt                          — authentication discovery (plain text)
  *
  * Plus a small JSON API the bundled UI uses, and an OPTIONAL Web Bot Auth
  * identity surface (disabled unless ENABLE_WEB_BOT_AUTH=true).
@@ -131,6 +133,12 @@ const AUTH_MD_HEADERS = {
 	"X-Content-Type-Options": "nosniff",
 };
 
+const AUTH_TXT_HEADERS = {
+	"Content-Type": "text/plain; charset=utf-8",
+	"Cache-Control": "public, max-age=3600",
+	"X-Content-Type-Options": "nosniff",
+};
+
 app.onError((err, c) => {
 	console.error(`[Error] ${c.req.method} ${c.req.path}: ${err.message}`);
 	// Match the response type to the surface: text surfaces shouldn't get a
@@ -189,6 +197,17 @@ app.on("HEAD", "/auth.md", () => {
 	return new Response(null, {
 		status: 200,
 		headers: AUTH_MD_HEADERS,
+	});
+});
+
+app.get("/auth.txt", (c) => {
+	return c.body(AUTH_MD_BODY, 200, AUTH_TXT_HEADERS);
+});
+
+app.on("HEAD", "/auth.txt", () => {
+	return new Response(null, {
+		status: 200,
+		headers: AUTH_TXT_HEADERS,
 	});
 });
 
@@ -293,6 +312,18 @@ app.get("/api/site", async (c) => {
 		site,
 		webBotAuthEnabled: c.env.ENABLE_WEB_BOT_AUTH === "true",
 		surfaces: [
+			{
+				id: "auth-md",
+				label: "auth.md",
+				path: "/auth.md",
+				kind: "text",
+			},
+			{
+				id: "auth-txt",
+				label: "auth.txt",
+				path: "/auth.txt",
+				kind: "text",
+			},
 			{ id: "llms-txt", label: "llms.txt", path: "/llms.txt", kind: "text" },
 			{
 				id: "llms-full",
@@ -410,7 +441,7 @@ app.all("/api/identity", async (c) => {
 
 // Explicit module-worker wrapper: export an object with a fetch handler that
 // delegates to the Hono app. This makes the Cloudflare module-worker entry
-//point obvious and avoids ambiguity about the default export.
+// point obvious and avoids ambiguity about the default export.
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
 		// Hono's app.fetch may not have an exact TypeScript signature here; cast
@@ -418,4 +449,3 @@ export default {
 		return (app as any).fetch(request, env as any, ctx as any);
 	},
 };
-
