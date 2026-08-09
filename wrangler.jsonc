@@ -4,6 +4,10 @@
 	"main": "./src/worker/index.ts",
 	"compatibility_date": "2025-10-08",
 	"upload_source_maps": true,
+	"routes": [
+		"www.danmackenzie.co.uk/.well-known/api-catalog*",
+		"www.danmackenzie.co.uk/auth.md*"
+	],
 	"observability": {
 		"enabled": true
 	},
