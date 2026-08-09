@@ -36,7 +36,24 @@
 		{
 			"pattern": "www.danmackenzie.co.uk/jsonld*",
 			"zone_name": "danmackenzie.co.uk"
-		}
+		},
+		{
+			"pattern": "www.danmackenzie.co.uk/*.jsonld*",
+			"zone_name": "danmackenzie.co.uk"
+		},
+		{
+			"pattern": "www.danmackenzie.co.uk/*.md*",
+			"zone_name": "danmackenzie.co.uk"
+		},
+		{
+  "pattern": "www.danmackenzie.co.uk/api",
+  "zone_name": "danmackenzie.co.uk"
+},
+{
+  "pattern": "www.danmackenzie.co.uk/api/*",
+  "zone_name": "danmackenzie.co.uk"
+}
+
 	],
 	"observability": {
 		"enabled": true
