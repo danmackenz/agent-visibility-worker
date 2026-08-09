@@ -80,7 +80,25 @@ const AUTH_MD_BODY = `# auth.md
 The public API Catalog and currently advertised discovery resources do not
 require login.
 
-No automated agent-registration endpoint is currently available.
+This document is intended for AI agents, agent providers, and automated
+systems discovering this service.
+
+## Agent registration
+
+Registration status: not currently available.
+
+Registration endpoint: none.
+
+register_uri: none.
+
+Provisioning endpoint: none.
+
+Supported registration methods: none.
+
+Credential type: none.
+
+Credential use: no credentials are currently required for the public API
+Catalog or the currently advertised public discovery resources.
 
 Agents must not attempt to create accounts, obtain credentials, or call
 undocumented authentication endpoints.
@@ -92,8 +110,9 @@ Human account pages are available at:
 - Sign in: https://accounts.danmackenzie.co.uk/sign-in
 - Sign up: https://accounts.danmackenzie.co.uk/sign-up
 
-These are human-facing Clerk pages. They are not currently an API token
-endpoint, OAuth authorization server, or automated agent-registration flow.
+These are human-facing Clerk pages only. They are not an API token endpoint,
+OAuth authorization server, agent registration endpoint, or automated
+credential-provisioning flow.
 
 ## API discovery
 
@@ -109,9 +128,17 @@ https://api.danmackenzie.co.uk/openapi.json
 
 The currently advertised API discovery resources are public.
 
-There is currently no documented bot login endpoint, bearer-token issuance
-endpoint, API-key registration endpoint, OAuth authorization server, or
-automated agent credential-provisioning flow.
+There is currently:
+
+- No bot login endpoint.
+- No bearer-token issuance endpoint.
+- No API-key registration endpoint.
+- No OAuth authorization server.
+- No automated agent credential-provisioning flow.
+- No documented registration or claim process.
+
+Supported authentication methods for the currently advertised public discovery
+resources: none.
 
 Do not send credentials or Authorization headers unless a future version of
 this document explicitly documents how they should be obtained and used.
@@ -121,10 +148,10 @@ this document explicitly documents how they should be obtained and used.
 Authentication instructions will be updated here when the Client Portal and
 protected API routes are deployed.
 
-Future documentation must describe only real, deployed authentication flows,
-including the protected resource, credential type, token endpoint or
-provisioning process, scopes or permissions, and revocation procedure where
-applicable.
+Future documentation will describe only real, deployed authentication flows,
+including the protected resource, credential type, registration or
+provisioning endpoint, supported registration method, token endpoint, scopes
+or permissions, credential use, and revocation procedure where applicable.
 `;
 
 const AUTH_MD_HEADERS = {
