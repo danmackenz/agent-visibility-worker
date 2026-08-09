@@ -7,43 +7,35 @@
 	"routes": [
 		{
 			"pattern": "www.danmackenzie.co.uk/.well-known/api-catalog*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/auth.md*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/auth.txt*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/llms.txt*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/llms-full.txt*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/index.json*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/robots.txt*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		},
 		{
 			"pattern": "www.danmackenzie.co.uk/jsonld*",
-			"zone_name": "danmackenzie.co.uk",
-			"custom_domain": true
+			"zone_name": "danmackenzie.co.uk"
 		}
 	],
 	"observability": {
@@ -57,6 +49,8 @@
 			"/.well-known/web-bot-auth/*",
 			"/api",
 			"/api/*",
+			"/auth.md",
+			"/auth.txt",
 			"/index.json",
 			"/jsonld",
 			"/llms-full.txt",
