@@ -54,8 +54,9 @@
 		"not_found_handling": "single-page-application",
 		"run_worker_first": [
 			"/.well-known/api-catalog",
-			"/.well-known/oauth-authorization-server/*",
 			"/.well-known/web-bot-auth/*",
+			"/.well-known/oauth-protected-resource",
+			"/.well-known/oauth-authorization-server/*",
 			"/api",
 			"/api/*",
 			"/auth.md",
