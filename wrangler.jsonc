@@ -40,8 +40,11 @@
         {
             "pattern": "www.danmackenzie.co.uk/api/*",
             "zone_name": "danmackenzie.co.uk"
+        },
+		{
+            "pattern": "www.danmackenzie.co.uk/.well-known/oauth-authorization-server*",
+            "zone_name": "danmackenzie.co.uk"
         }
-
 	],
 	"observability": {
 		"enabled": true
