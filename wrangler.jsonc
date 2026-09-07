@@ -14,10 +14,6 @@
 			"zone_name": "danmackenzie.co.uk"
 		},
 		{
-			"pattern": "www.danmackenzie.co.uk/auth.txt*",
-			"zone_name": "danmackenzie.co.uk"
-		},
-		{
 			"pattern": "www.danmackenzie.co.uk/llms.txt*",
 			"zone_name": "danmackenzie.co.uk"
 		},
@@ -59,7 +55,6 @@
 			"/api",
 			"/api/*",
 			"/auth.md",
-			"/auth.txt",
 			"/index.json",
 			"/jsonld",
 			"/llms-full.txt",
@@ -84,6 +79,7 @@
 		"AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 		"ENRICHMENT_CACHE_TTL": "3600",
 		"CONTENT_SIGNAL": "ai-input=yes, search=yes, ai-train=yes",
-		"ENABLE_WEB_BOT_AUTH": "true"
+		"ENABLE_WEB_BOT_AUTH": "true",
+		"WORKOS_AUTH_MD_URL": "https://peaceful-resource-23.authkit.app/agent/auth.md"
 	}
 }

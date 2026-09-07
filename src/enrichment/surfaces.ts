@@ -102,7 +102,7 @@ export function renderIndexJson(ctx: RenderCtx) {
 			pageMarkdown: `${site.origin}/{slug}.md`,
 			robots: `${site.origin}/robots.txt`,
 			sitemap: `${site.origin}/sitemap.xml`,
-			auth: `${site.origin}/auth.txt`,
+			auth: `${site.origin}/auth.md`,
 		},
 		pages: resources.map((r) => ({
 			slug: r.slug,

@@ -60,6 +60,7 @@ export interface Env {
 	SITE_NAME: string;
 	SITE_DESCRIPTION: string;
 	AI_MODEL: string;
+	WORKOS_AUTH_MD_URL: string;
 	ENRICHMENT_CACHE_TTL: string;
 	CONTENT_SIGNAL: string;
 	ENABLE_WEB_BOT_AUTH: string;

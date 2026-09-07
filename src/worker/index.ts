@@ -3,15 +3,15 @@
  *
  * Serves one enriched content store through every agent-discovery surface:
  *
- *   GET /llms.txt                          — llms.txt index (Markdown)
- *   GET /llms-full.txt                     — full content inlined (Markdown)
- *   GET /index.json                        — typed JSON index
- *   GET /:slug.md                          — per-page Markdown (groundable)
- *   GET /:slug.jsonld                      — per-page schema.org JSON-LD
- *   GET /jsonld                            — site-level schema.org JSON-LD
- *   GET /robots.txt                        — explicit AI-bot directives
- *   GET /auth.md                           — authentication discovery (Markdown)
- *   GET /auth.txt                          — authentication discovery (plain text)
+ * GET /llms.txt        — llms.txt index (Markdown)
+ * GET /llms-full.txt   — full content inlined (Markdown)
+ * GET /index.json      — typed JSON index
+ * GET /:slug.md        — per-page Markdown (groundable)
+ * GET /:slug.jsonld    — per-page schema.org JSON-LD
+ * GET /jsonld          — site-level schema.org JSON-LD
+ * GET /robots.txt      — explicit AI-bot directives
+ * GET /auth.md         — authentication discovery (Markdown, proxied+cached
+ *                        from the WorkOS AuthKit auth.md source of truth)
  *
  * Plus a small JSON API the bundled UI uses, and an OPTIONAL Web Bot Auth
  * identity surface (disabled unless ENABLE_WEB_BOT_AUTH=true).
@@ -23,161 +23,133 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import {
-	renderIndexJson,
-	renderLlmsFullTxt,
-	renderLlmsTxt,
-	renderResourceJsonLd,
-	renderResourceMd,
-	renderRobotsTxt,
-	renderWebsiteJsonLd,
+  renderIndexJson,
+  renderLlmsFullTxt,
+  renderLlmsTxt,
+  renderResourceJsonLd,
+  renderResourceMd,
+  renderRobotsTxt,
+  renderWebsiteJsonLd,
 } from "../enrichment/surfaces";
 import {
-	clearCache,
-	getResources,
-	siteConfig,
-	upsertResource,
+  clearCache,
+  getResources,
+  siteConfig,
+  upsertResource,
 } from "../lib/store";
 import type { Env, RawResource } from "../lib/types";
 import {
-	directoryDocument,
-	SAMPLE_AGENT_KEYS,
-	verifyAgentIdentity,
+  directoryDocument,
+  SAMPLE_AGENT_KEYS,
+  verifyAgentIdentity,
 } from "../lib/web-bot-auth";
 
 const app = new Hono<{ Bindings: Env }>();
 
 const API_CATALOG_BODY = JSON.stringify({
-	linkset: [
-		{
-			anchor: "https://api.danmackenzie.co.uk/",
-			"service-desc": [
-				{
-					href: "https://api.danmackenzie.co.uk/openapi.json",
-					type: "application/json",
-				},
-			],
-			"service-doc": [
-				{
-					href: "https://api.danmackenzie.co.uk/",
-					type: "text/html",
-				},
-			],
-		},
-	],
+  linkset: [
+    {
+      anchor: "https://api.danmackenzie.co.uk/",
+      "service-desc": [
+        {
+          href: "https://api.danmackenzie.co.uk/openapi.json",
+          type: "application/json",
+        },
+      ],
+      "service-doc": [
+        {
+          href: "https://api.danmackenzie.co.uk/",
+          type: "text/html",
+        },
+      ],
+    },
+  ],
 });
 
 const API_CATALOG_HEADERS = {
-	"Content-Type":
-		'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
-	"Cache-Control": "public, max-age=3600",
-	"X-Content-Type-Options": "nosniff",
+  "Content-Type":
+    'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+  "Cache-Control": "public, max-age=3600",
+  "X-Content-Type-Options": "nosniff",
 };
 
-const AUTH_MD_BODY = `# auth.md
+// ---------------------------------------------------------------------------
+// auth.md — proxied + cached from the WorkOS AuthKit source of truth.
+//
+// We do NOT hardcode the document here: WorkOS AuthKit (env.WORKOS_AUTH_MD_URL)
+// is the authoritative Authorization Server and owns the actual agent_auth
+// flows, so this Worker mirrors its content rather than maintaining a second,
+// divergent copy. Cached in VISIBILITY_CACHE KV so we don't hit AuthKit on
+// every request; falls back to a stale cached copy (or a safe static notice)
+// if AuthKit is briefly unreachable.
+// ---------------------------------------------------------------------------
 
-## Authentication status
+const AUTH_MD_CACHE_KEY = "surface:auth.md";
 
-The public API Catalog and currently advertised discovery resources do not
-require login.
+const AUTH_MD_FALLBACK = `# auth.md
 
-This document is intended for AI agents, agent providers, and automated
-systems discovering this service.
-
-## Agent registration
-
-Registration status: not currently available.
-
-Registration endpoint: none.
-
-register_uri: none.
-
-Provisioning endpoint: none.
-
-Supported registration methods: none.
-
-Credential type: none.
-
-Credential use: no credentials are currently required for the public API
-Catalog or the currently advertised public discovery resources.
-
-Agents must not attempt to create accounts, obtain credentials, or call
-undocumented authentication endpoints.
-
-## Human account access
-
-Human account pages are available at:
-
-- Sign in: https://accounts.danmackenzie.co.uk/sign-in
-- Sign up: https://accounts.danmackenzie.co.uk/sign-up
-
-These are human-facing Clerk pages only. They are not an API token endpoint,
-OAuth authorization server, agent registration endpoint, or automated
-credential-provisioning flow.
-
-## API discovery
-
-The public API Catalog is available at:
-
-https://www.danmackenzie.co.uk/.well-known/api-catalog
-
-The advertised API description is available at:
-
-https://api.danmackenzie.co.uk/openapi.json
-
-## Current API access
-
-The currently advertised API discovery resources are public.
-
-There is currently:
-
-- No bot login endpoint.
-- No bearer-token issuance endpoint.
-- No API-key registration endpoint.
-- No OAuth authorization server.
-- No automated agent credential-provisioning flow.
-- No documented registration or claim process.
-
-Supported authentication methods for the currently advertised public discovery
-resources: none.
-
-Do not send credentials or Authorization headers unless a future version of
-this document explicitly documents how they should be obtained and used.
-
-## Future authentication changes
-
-Authentication instructions will be updated here when the Client Portal and
-protected API routes are deployed.
-
-Future documentation will describe only real, deployed authentication flows,
-including the protected resource, credential type, registration or
-provisioning endpoint, supported registration method, token endpoint, scopes
-or permissions, credential use, and revocation procedure where applicable.
+This service delegates agent registration to WorkOS AuthKit. The
+authoritative document is temporarily unavailable from the upstream
+Authorization Server. Retry shortly, or discover it directly via
+/.well-known/oauth-protected-resource.
 `;
 
 const AUTH_MD_HEADERS = {
-	"Content-Type": "text/markdown; charset=utf-8",
-	"Cache-Control": "public, max-age=3600",
-	"X-Content-Type-Options": "nosniff",
+  "Content-Type": "text/markdown; charset=utf-8",
+  "Cache-Control": "public, max-age=300",
+  "X-Content-Type-Options": "nosniff",
 };
 
-const AUTH_TXT_HEADERS = {
-	"Content-Type": "text/plain; charset=utf-8",
-	"Cache-Control": "public, max-age=3600",
-	"X-Content-Type-Options": "nosniff",
-};
+async function fetchWorkosAuthMd(env: Env): Promise<string | null> {
+  try {
+    const upstream = await fetch(env.WORKOS_AUTH_MD_URL, {
+      headers: { accept: "text/markdown, text/plain;q=0.9, */*;q=0.8" },
+      cf: { cacheTtl: 300, cacheEverything: true },
+    });
+    if (!upstream.ok) return null;
+    const text = await upstream.text();
+    return text.trim() ? text : null;
+  } catch (err) {
+    console.error(`[auth.md] upstream fetch failed: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+async function getAuthMdBody(env: Env, ctx: ExecutionContext): Promise<string> {
+  const ttlMs = (Number(env.ENRICHMENT_CACHE_TTL) || 3600) * 1000;
+  const cached = (await env.VISIBILITY_CACHE.get(AUTH_MD_CACHE_KEY, "json")) as
+    | { body: string; fetchedAt: number }
+    | null;
+
+  if (cached && Date.now() - cached.fetchedAt < ttlMs) return cached.body;
+
+  const fresh = await fetchWorkosAuthMd(env);
+  if (fresh) {
+    ctx.waitUntil(
+      env.VISIBILITY_CACHE.put(
+        AUTH_MD_CACHE_KEY,
+        JSON.stringify({ body: fresh, fetchedAt: Date.now() }),
+      ),
+    );
+    return fresh;
+  }
+
+  // Upstream unreachable: prefer a stale copy over a hard failure.
+  return cached ? cached.body : AUTH_MD_FALLBACK;
+}
 
 app.onError((err, c) => {
-	console.error(`[Error] ${c.req.method} ${c.req.path}: ${err.message}`);
-	// Match the response type to the surface: text surfaces shouldn't get a
-	// JSON error body.
-	if (/\.(md|txt)$/.test(c.req.path)) {
-		return c.text("Internal server error", 500);
-	}
-	return c.json({ error: "Internal server error" }, 500);
+  console.error(`[Error] ${c.req.method} ${c.req.path}: ${err.message}`);
+  // Match the response type to the surface: text surfaces shouldn't get a
+  // JSON error body.
+  if (/\.(md|txt)$/.test(c.req.path)) {
+    return c.text("Internal server error", 500);
+  }
+  return c.json({ error: "Internal server error" }, 500);
 });
 
 function originOf(url: string): string {
-	return new URL(url).origin;
+  return new URL(url).origin;
 }
 
 // --- Validation limits for user-supplied content ---------------------------
@@ -187,55 +159,46 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,62})$/;
 
 /** Constant-time-ish bearer check for the mutating routes. */
 function isAuthorized(c: {
-	env: Env;
-	req: { header: (k: string) => string | undefined };
+  env: Env;
+  req: { header: (k: string) => string | undefined };
 }): boolean {
-	const configured = c.env.ADMIN_TOKEN;
-	if (!configured) return false;
-	const header = c.req.header("authorization") ?? "";
-	const token = header.replace(/^Bearer\s+/i, "");
-	return token.length > 0 && token === configured;
+  const configured = c.env.ADMIN_TOKEN;
+  if (!configured) return false;
+  const header = c.req.header("authorization") ?? "";
+  const token = header.replace(/^Bearer\s+/i, "");
+  return token.length > 0 && token === configured;
 }
 
 /** Apply the Content-Signal header declaring agent usage intent. */
 function contentSignal(c: { env: Env }): Record<string, string> {
-	return {
-		"Content-Signal":
-			c.env.CONTENT_SIGNAL || "ai-input=yes, search=yes, ai-train=no",
-	};
+  return {
+    "Content-Signal":
+      c.env.CONTENT_SIGNAL || "ai-input=yes, search=yes, ai-train=no",
+  };
 }
 
 app.get("/.well-known/api-catalog", (c) => {
-	return c.body(API_CATALOG_BODY, 200, API_CATALOG_HEADERS);
+  return c.body(API_CATALOG_BODY, 200, API_CATALOG_HEADERS);
 });
 
 app.on("HEAD", "/.well-known/api-catalog", () => {
-	return new Response(null, {
-		status: 200,
-		headers: API_CATALOG_HEADERS,
-	});
+  return new Response(null, {
+    status: 200,
+    headers: API_CATALOG_HEADERS,
+  });
 });
 
-app.get("/auth.md", (c) => {
-	return c.body(AUTH_MD_BODY, 200, AUTH_MD_HEADERS);
+app.get("/auth.md", async (c) => {
+  const body = await getAuthMdBody(c.env, c.executionCtx);
+  return c.body(body, 200, AUTH_MD_HEADERS);
 });
 
-app.on("HEAD", "/auth.md", () => {
-	return new Response(null, {
-		status: 200,
-		headers: AUTH_MD_HEADERS,
-	});
-});
-
-app.get("/auth.txt", (c) => {
-	return c.body(AUTH_MD_BODY, 200, AUTH_TXT_HEADERS);
-});
-
-app.on("HEAD", "/auth.txt", () => {
-	return new Response(null, {
-		status: 200,
-		headers: AUTH_TXT_HEADERS,
-	});
+app.on("HEAD", "/auth.md", async (c) => {
+  await getAuthMdBody(c.env, c.executionCtx); // warms/refreshes cache too
+  return new Response(null, {
+    status: 200,
+    headers: AUTH_MD_HEADERS,
+  });
 });
 
 // CORS so agents can fetch the machine-readable surfaces from anywhere.
@@ -253,80 +216,80 @@ app.use("/:file{.+\\.jsonld}", cors());
 // ---------------------------------------------------------------------------
 
 app.get("/llms.txt", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	return c.text(renderLlmsTxt({ site, resources }), 200, {
-		"Content-Type": "text/plain; charset=utf-8",
-		...contentSignal(c),
-	});
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  return c.text(renderLlmsTxt({ site, resources }), 200, {
+    "Content-Type": "text/plain; charset=utf-8",
+    ...contentSignal(c),
+  });
 });
 
 app.get("/llms-full.txt", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	return c.text(renderLlmsFullTxt({ site, resources }), 200, {
-		"Content-Type": "text/plain; charset=utf-8",
-		...contentSignal(c),
-	});
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  return c.text(renderLlmsFullTxt({ site, resources }), 200, {
+    "Content-Type": "text/plain; charset=utf-8",
+    ...contentSignal(c),
+  });
 });
 
 app.get("/index.json", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	c.header("Content-Signal", contentSignal(c)["Content-Signal"]);
-	return c.json(renderIndexJson({ site, resources }));
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  c.header("Content-Signal", contentSignal(c)["Content-Signal"]);
+  return c.json(renderIndexJson({ site, resources }));
 });
 
 app.get("/robots.txt", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	return c.text(
-		renderRobotsTxt({
-			site,
-			resources,
-			contentSignal: contentSignal(c)["Content-Signal"],
-		}),
-		200,
-		{
-			"Content-Type": "text/plain; charset=utf-8",
-			...contentSignal(c),
-		},
-	);
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  return c.text(
+    renderRobotsTxt({
+      site,
+      resources,
+      contentSignal: contentSignal(c)["Content-Signal"],
+    }),
+    200,
+    {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...contentSignal(c),
+    },
+  );
 });
 
 app.get("/jsonld", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	return c.json(renderWebsiteJsonLd({ site, resources }), 200, {
-		"Content-Type": "application/ld+json; charset=utf-8",
-		...contentSignal(c),
-	});
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  return c.json(renderWebsiteJsonLd({ site, resources }), 200, {
+    "Content-Type": "application/ld+json; charset=utf-8",
+    ...contentSignal(c),
+  });
 });
 
 // Per-page Markdown: /:slug.md
 app.get("/:file{.+\\.md}", async (c) => {
-	const slug = c.req.param("file").replace(/\.md$/, "");
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	const resource = resources.find((r) => r.slug === slug);
-	if (!resource) return c.notFound();
-	return c.text(renderResourceMd({ resource, site }), 200, {
-		"Content-Type": "text/markdown; charset=utf-8",
-		...contentSignal(c),
-	});
+  const slug = c.req.param("file").replace(/\.md$/, "");
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  const resource = resources.find((r) => r.slug === slug);
+  if (!resource) return c.notFound();
+  return c.text(renderResourceMd({ resource, site }), 200, {
+    "Content-Type": "text/markdown; charset=utf-8",
+    ...contentSignal(c),
+  });
 });
 
 // Per-page JSON-LD: /:slug.jsonld
 app.get("/:file{.+\\.jsonld}", async (c) => {
-	const slug = c.req.param("file").replace(/\.jsonld$/, "");
-	const site = siteConfig(c.env, originOf(c.req.url));
-	const resources = await getResources(c.env);
-	const resource = resources.find((r) => r.slug === slug);
-	if (!resource) return c.notFound();
-	return c.json(renderResourceJsonLd({ resource, site }), 200, {
-		"Content-Type": "application/ld+json; charset=utf-8",
-		...contentSignal(c),
-	});
+  const slug = c.req.param("file").replace(/\.jsonld$/, "");
+  const site = siteConfig(c.env, originOf(c.req.url));
+  const resources = await getResources(c.env);
+  const resource = resources.find((r) => r.slug === slug);
+  if (!resource) return c.notFound();
+  return c.json(renderResourceJsonLd({ resource, site }), 200, {
+    "Content-Type": "application/ld+json; charset=utf-8",
+    ...contentSignal(c),
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -334,119 +297,110 @@ app.get("/:file{.+\\.jsonld}", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.get("/api/site", async (c) => {
-	const site = siteConfig(c.env, originOf(c.req.url));
-	return c.json({
-		site,
-		webBotAuthEnabled: c.env.ENABLE_WEB_BOT_AUTH === "true",
-		surfaces: [
-			{
-				id: "auth-md",
-				label: "auth.md",
-				path: "/auth.md",
-				kind: "text",
-			},
-			{
-				id: "auth-txt",
-				label: "auth.txt",
-				path: "/auth.txt",
-				kind: "text",
-			},
-			{ id: "llms-txt", label: "llms.txt", path: "/llms.txt", kind: "text" },
-			{
-				id: "llms-full",
-				label: "llms-full.txt",
-				path: "/llms-full.txt",
-				kind: "text",
-			},
-			{
-				id: "index-json",
-				label: "index.json",
-				path: "/index.json",
-				kind: "json",
-			},
-			{ id: "robots", label: "robots.txt", path: "/robots.txt", kind: "text" },
-			{ id: "jsonld", label: "JSON-LD", path: "/jsonld", kind: "json" },
-		],
-	});
+  const site = siteConfig(c.env, originOf(c.req.url));
+  return c.json({
+    site,
+    webBotAuthEnabled: c.env.ENABLE_WEB_BOT_AUTH === "true",
+    surfaces: [
+      { id: "auth-md", label: "auth.md", path: "/auth.md", kind: "text" },
+      { id: "llms-txt", label: "llms.txt", path: "/llms.txt", kind: "text" },
+      {
+        id: "llms-full",
+        label: "llms-full.txt",
+        path: "/llms-full.txt",
+        kind: "text",
+      },
+      {
+        id: "index-json",
+        label: "index.json",
+        path: "/index.json",
+        kind: "json",
+      },
+      { id: "robots", label: "robots.txt", path: "/robots.txt", kind: "text" },
+      { id: "jsonld", label: "JSON-LD", path: "/jsonld", kind: "json" },
+    ],
+  });
 });
 
 app.get("/api/resources", async (c) => {
-	const resources = await getResources(c.env);
-	return c.json({ count: resources.length, resources });
+  const resources = await getResources(c.env);
+  return c.json({ count: resources.length, resources });
 });
 
 app.get("/api/resources/:slug", async (c) => {
-	const resources = await getResources(c.env);
-	const resource = resources.find((r) => r.slug === c.req.param("slug"));
-	if (!resource) return c.json({ error: "Not found" }, 404);
-	return c.json(resource);
+  const resources = await getResources(c.env);
+  const resource = resources.find((r) => r.slug === c.req.param("slug"));
+  if (!resource) return c.json({ error: "Not found" }, 404);
+  return c.json(resource);
 });
 
 app.post("/api/resources", async (c) => {
-	if (!isAuthorized(c)) {
-		return c.json({ error: "Unauthorized. Set the ADMIN_TOKEN secret." }, 401);
-	}
-	const body = await c.req.json<Partial<RawResource>>().catch(() => null);
-	if (!body?.slug || !body?.body) {
-		return c.json({ error: "Missing required fields: slug, body" }, 400);
-	}
+  if (!isAuthorized(c)) {
+    return c.json({ error: "Unauthorized. Set the ADMIN_TOKEN secret." }, 401);
+  }
 
-	const slug = String(body.slug);
-	if (!SLUG_RE.test(slug)) {
-		return c.json({ error: "Invalid slug: use 1–63 chars of [a-z0-9-]." }, 400);
-	}
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (!body?.slug || !body?.body) {
+    return c.json({ error: "Missing required fields: slug, body" }, 400);
+  }
 
-	const rawBody = String(body.body);
-	if (new TextEncoder().encode(rawBody).length > MAX_BODY_BYTES) {
-		return c.json(
-			{ error: `Body too large (max ${MAX_BODY_BYTES} bytes).` },
-			400,
-		);
-	}
+  const slug = String(body.slug);
+  if (!SLUG_RE.test(slug)) {
+    return c.json({ error: "Invalid slug: use 1–63 chars of [a-z0-9-]." }, 400);
+  }
 
-	let url = `${originOf(c.req.url)}/${slug}`;
-	if (body.url) {
-		try {
-			const parsed = new URL(String(body.url));
-			if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-				return c.json({ error: "url must be http(s)." }, 400);
-			}
-			url = parsed.toString();
-		} catch {
-			return c.json({ error: "url is not a valid URL." }, 400);
-		}
-	}
+  const rawBody = String(body.body);
+  if (new TextEncoder().encode(rawBody).length > MAX_BODY_BYTES) {
+    return c.json(
+      { error: `Body too large (max ${MAX_BODY_BYTES} bytes).` },
+      400,
+    );
+  }
 
-	const raw: RawResource = {
-		slug,
-		url,
-		title: body.title ? String(body.title).slice(0, 200) : undefined,
-		body: rawBody,
-	};
+  let url = `${originOf(c.req.url)}/${slug}`;
+  if (body.url) {
+    try {
+      const parsed = new URL(String(body.url));
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return c.json({ error: "url must be http(s)." }, 400);
+      }
+      url = parsed.toString();
+    } catch {
+      return c.json({ error: "url is not a valid URL." }, 400);
+    }
+  }
 
-	try {
-		const enriched = await upsertResource(c.env, raw, MAX_RESOURCES);
-		return c.json(enriched, 201);
-	} catch (err) {
-		if ((err as Error).message === "RESOURCE_LIMIT") {
-			return c.json(
-				{ error: `Resource limit reached (max ${MAX_RESOURCES}).` },
-				409,
-			);
-		}
-		throw err;
-	}
+  const raw: RawResource = {
+    slug,
+    url,
+    title: body.title ? String(body.title).slice(0, 200) : undefined,
+    body: rawBody,
+  };
+
+  try {
+    const enriched = await upsertResource(c.env, raw, MAX_RESOURCES);
+    return c.json(enriched, 201);
+  } catch (err) {
+    if ((err as Error).message === "RESOURCE_LIMIT") {
+      return c.json(
+        { error: `Resource limit reached (max ${MAX_RESOURCES}).` },
+        409,
+      );
+    }
+    throw err;
+  }
 });
 
 app.post("/api/refresh", async (c) => {
-	if (!isAuthorized(c)) {
-		return c.json({ error: "Unauthorized. Set the ADMIN_TOKEN secret." }, 401);
-	}
-	await clearCache(c.env);
-	return c.json({
-		ok: true,
-		message: "Cache cleared; surfaces will re-enrich.",
-	});
+  if (!isAuthorized(c)) {
+    return c.json({ error: "Unauthorized. Set the ADMIN_TOKEN secret." }, 401);
+  }
+
+  await clearCache(c.env);
+  return c.json({
+    ok: true,
+    message: "Cache cleared; surfaces will re-enrich.",
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -454,25 +408,25 @@ app.post("/api/refresh", async (c) => {
 // ---------------------------------------------------------------------------
 
 app.get("/.well-known/web-bot-auth/directory", (c) => {
-	if (c.env.ENABLE_WEB_BOT_AUTH !== "true") return c.notFound();
-	return c.json(directoryDocument(SAMPLE_AGENT_KEYS));
+  if (c.env.ENABLE_WEB_BOT_AUTH !== "true") return c.notFound();
+  return c.json(directoryDocument(SAMPLE_AGENT_KEYS));
 });
 
 app.all("/api/identity", async (c) => {
-	if (c.env.ENABLE_WEB_BOT_AUTH !== "true") {
-		return c.json({ error: "Web Bot Auth is disabled" }, 404);
-	}
-	const result = await verifyAgentIdentity(c.req.raw, SAMPLE_AGENT_KEYS);
-	return c.json(result);
+  if (c.env.ENABLE_WEB_BOT_AUTH !== "true") {
+    return c.json({ error: "Web Bot Auth is disabled" }, 404);
+  }
+  const result = await verifyAgentIdentity(c.req.raw, SAMPLE_AGENT_KEYS);
+  return c.json(result);
 });
 
 // Explicit module-worker wrapper: export an object with a fetch handler that
 // delegates to the Hono app. This makes the Cloudflare module-worker entry
 // point obvious and avoids ambiguity about the default export.
 export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-		// Hono's app.fetch may not have an exact TypeScript signature here; cast
-		// to any to avoid type mismatch while preserving runtime behavior.
-		return (app as any).fetch(request, env as any, ctx as any);
-	},
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    // Hono's app.fetch may not have an exact TypeScript signature here; cast
+    // to any to avoid type mismatch while preserving runtime behavior.
+    return (app as any).fetch(request, env as any, ctx as any);
+  },
 };
