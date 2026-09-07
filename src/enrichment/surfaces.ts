@@ -163,30 +163,32 @@ export function renderResourceMd(args: {
 // /robots.txt — explicitly welcome AI agents and point them at llms.txt.
 // ---------------------------------------------------------------------------
 export function renderRobotsTxt(ctx: RenderCtx): string {
-	const { site } = ctx;
-	// Content Signals are expressed as a `Content-Signal:` directive inside a
-	// robots.txt User-agent group (see https://contentsignals.org). We emit it
-	// per group so the canonical place a crawler looks carries the policy.
-	const signal = ctx.contentSignal;
-	const lines: string[] = [];
-	lines.push("# Robots directives for AI agents and crawlers.");
-	lines.push("# This site intentionally welcomes AI agents — see /llms.txt.");
-	lines.push("");
-	for (const agent of KNOWN_AI_AGENTS) {
-		lines.push(`User-agent: ${agent}`);
-		lines.push("Allow: /");
-		if (signal) lines.push(`Content-Signal: ${signal}`);
-		lines.push("");
-	}
-	lines.push("User-agent: *");
-	lines.push("Allow: /");
-	if (signal) lines.push(`Content-Signal: ${signal}`);
-	lines.push("");
-	lines.push("# Machine-readable indexes for agents:");
-	lines.push(`# - ${site.origin}/llms.txt`);
-	lines.push(`# - ${site.origin}/index.json`);
-	lines.push("");
-	return lines.join("\n");
+    const { site } = ctx;
+    // Content Signals are expressed as a `Content-Signal:` directive inside a
+    // robots.txt User-agent group (see https://contentsignals.org). We emit it
+    // per group so the canonical place a crawler looks carries the policy.
+    const signal = ctx.contentSignal;
+    const lines: string[] = [];
+    lines.push("# Robots directives for AI agents and crawlers.");
+    lines.push("# This site intentionally welcomes AI agents — see /llms.txt.");
+    lines.push("");
+    for (const agent of KNOWN_AI_AGENTS) {
+        lines.push(`User-agent: ${agent}`);
+        lines.push("Allow: /");
+        if (signal) lines.push(`Content-Signal: ${signal}`);
+        lines.push("");
+    }
+    lines.push("User-agent: *");
+    lines.push("Allow: /");
+    if (signal) lines.push(`Content-Signal: ${signal}`);
+    lines.push("");
+    lines.push("# Machine-readable indexes for agents:");
+    lines.push(`# - ${site.origin}/llms.txt`);
+    lines.push(`# - ${site.origin}/index.json`);
+    lines.push("");
+    lines.push(`Sitemap: ${site.origin}/sitemap.xml`);
+    lines.push("");
+    return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
