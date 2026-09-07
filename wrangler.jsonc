@@ -80,6 +80,8 @@
 		"ENRICHMENT_CACHE_TTL": "3600",
 		"CONTENT_SIGNAL": "ai-input=yes, search=yes, ai-train=yes",
 		"ENABLE_WEB_BOT_AUTH": "true",
-		"WORKOS_AUTH_MD_URL": "https://peaceful-resource-23.authkit.app/agent/auth.md"
+		"WORKOS_AUTH_MD_URL": "https://peaceful-resource-23.authkit.app/agent/auth.md",
+		"WORKOS_AUTHKIT_DOMAIN": "https://peaceful-resource-23.authkit.app",
+		"WORKOS_RESOURCE_INDICATOR": "https://www.danmackenzie.co.uk/"
 	}
 }
